@@ -12,20 +12,20 @@ public class TaskApprovedListener {
 
     private static final Logger log = LoggerFactory.getLogger(TaskApprovedListener.class);
 
-    private final ExcelExportService excelExportService;
+    private final MasterSheetService masterSheetService;
 
-    public TaskApprovedListener(ExcelExportService excelExportService) {
-        this.excelExportService = excelExportService;
+    public TaskApprovedListener(MasterSheetService masterSheetService) {
+        this.masterSheetService = masterSheetService;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTaskApproved(TaskApprovedEvent event) {
         try {
-            excelExportService.appendToMasterFile(event.rows());
+            masterSheetService.refresh(event.managerId());
         } catch (Exception e) {
-            // The approval is already saved. Do not fail the manager's request because of Excel.
-            log.error("Excel update failed (is the file open in Excel?). "
-                    + "Use 'Download Excel report' to rebuild it from the database.", e);
+            // The approval is already saved. Never fail the manager's request because of Excel.
+            // The background job will try again within 30 seconds.
+            log.error("Excel refresh after approval failed", e);
         }
     }
 }

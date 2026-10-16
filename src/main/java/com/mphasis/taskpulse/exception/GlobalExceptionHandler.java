@@ -1,4 +1,4 @@
-// exception/GlobalExceptionHandler.java  (full file, one handler added)
+// exception/GlobalExceptionHandler.java  (full file: ExternalServiceException and ConflictException handlers added)
 package com.mphasis.taskpulse.exception;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -27,8 +27,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> conflictException(ConflictException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), null);
+    }
+
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<Map<String, Object>> aiUnavailable(AiServiceException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<Map<String, Object>> externalUnavailable(ExternalServiceException ex) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), null);
     }
 

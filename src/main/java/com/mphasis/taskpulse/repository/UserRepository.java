@@ -2,6 +2,7 @@
 package com.mphasis.taskpulse.repository;
 
 import com.mphasis.taskpulse.entity.User;
+import com.mphasis.taskpulse.enums.Role;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,6 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailAndIdNot(String email, Long id);
     List<User> findByManagerId(Long managerId);
     Optional<User> findByIdAndManagerId(Long id, Long managerId);
+
+    // all users with a given role (used by the Excel background job to find managers)
+    List<User> findByRole(Role role);
 
     // Same lookups, but load assigned projects in the same query (avoids N+1)
     @EntityGraph(attributePaths = "assignedProjects")

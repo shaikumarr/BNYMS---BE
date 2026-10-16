@@ -1,8 +1,6 @@
 // report/TaskApprovedEvent.java
 package com.mphasis.taskpulse.report;
 
-import java.util.List;
-
-/** Published by ApprovalService when a task is approved. Carries the rows to write. */
-public record TaskApprovedEvent(List<ExcelRow> rows) {
+/** Published by ApprovalService after a task is approved. Tells the report which manager's file to refresh. */
+public record TaskApprovedEvent(Long managerId) {
 }

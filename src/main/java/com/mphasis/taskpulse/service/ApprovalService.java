@@ -1,4 +1,4 @@
-// service/ApprovalService.java  (full file)
+// service/ApprovalService.java
 package com.mphasis.taskpulse.service;
 
 import com.mphasis.taskpulse.dto.ReviewRequest;
@@ -17,6 +17,8 @@ import com.mphasis.taskpulse.report.TaskApprovedEvent;
 import com.mphasis.taskpulse.repository.ApprovalRepository;
 import com.mphasis.taskpulse.repository.WeeklyTaskRepository;
 import com.mphasis.taskpulse.security.CurrentUser;
+import com.mphasis.taskpulse.sheets.ReviewRow;
+import com.mphasis.taskpulse.sheets.TaskReviewedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,17 +74,27 @@ public class ApprovalService {
 
         task.setReviewComment(req.comment());
 
+        // Rows for the live Google Sheet are built now (lazy data is only readable
+        // inside this transaction). The listeners run AFTER this transaction commits.
+        List<ExcelRow> approvedRows = List.of();
+
         if (req.decision() == Decision.APPROVED) {
             task.setStatus(TaskStatus.APPROVED);
             task.setCompletionPercent(100);
 
-            // Build the Excel rows now (lazy data is only readable inside this transaction).
-            // The listener writes them AFTER this transaction commits successfully.
-            List<ExcelRow> rows = reportService.rowsFor(task, manager.getName(), now);
-            eventPublisher.publishEvent(new TaskApprovedEvent(rows));
+            approvedRows = reportService.rowsFor(task, manager.getName(), now);
+
+            // Your existing Excel master sheet event: it carries the manager's id
+            eventPublisher.publishEvent(new TaskApprovedEvent(manager.getId()));
         } else {
             task.setStatus(TaskStatus.REJECTED);   // user can update again and re-submit
         }
+
+        // live Google Sheet: records every decision with the manager's comment
+        eventPublisher.publishEvent(new TaskReviewedEvent(
+                ReviewRow.of(task, manager.getName(), req.decision(), req.comment(), now),
+                approvedRows));
+
         return Mapper.toTaskResponse(task);
     }
 }

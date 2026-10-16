@@ -1,4 +1,4 @@
-// repository/WeeklyTaskRepository.java  (full file, existsByAssignedToId added)
+// repository/WeeklyTaskRepository.java  (full file, one method added)
 package com.mphasis.taskpulse.repository;
 
 import com.mphasis.taskpulse.entity.Project;
@@ -25,7 +25,10 @@ public interface WeeklyTaskRepository extends JpaRepository<WeeklyTask, Long> {
     List<WeeklyTask> findByStatusAndProjectCreatedByIdOrderByProjectIdAscWeekNumberAsc(
             TaskStatus status, Long managerId);
 
-    // NEW: does this employee still have any weekly parts?
+    // all tasks with a given status, for rebuilding the live sheet
+    List<WeeklyTask> findByStatusOrderByProjectIdAscWeekNumberAsc(TaskStatus status);
+
+    // does this employee still have any weekly parts?
     boolean existsByAssignedToId(Long userId);
 
     // "ownership" lookups: found only if the task belongs to this manager / user
