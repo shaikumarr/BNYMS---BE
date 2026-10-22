@@ -56,9 +56,11 @@ public class ApprovalService {
         if (task.getStatus() != TaskStatus.SUBMITTED) {
             throw new BadRequestException("Only submitted tasks can be reviewed");
         }
+
+        // Decision.REJECTED is the internal value for "rework"
         if (req.decision() == Decision.REJECTED
                 && (req.comment() == null || req.comment().isBlank())) {
-            throw new BadRequestException("A comment is required when rejecting a task");
+            throw new BadRequestException("Please write what needs to be reworked");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -84,10 +86,10 @@ public class ApprovalService {
 
             approvedRows = reportService.rowsFor(task, manager.getName(), now);
 
-            // Your existing Excel master sheet event: it carries the manager's id
+            // existing Excel master sheet event: it carries the manager's id
             eventPublisher.publishEvent(new TaskApprovedEvent(manager.getId()));
         } else {
-            task.setStatus(TaskStatus.REJECTED);   // user can update again and re-submit
+            task.setStatus(TaskStatus.REJECTED);   // shown as REWORK; the employee updates it and submits again
         }
 
         // live Google Sheet: records every decision with the manager's comment

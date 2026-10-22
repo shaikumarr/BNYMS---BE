@@ -7,7 +7,7 @@ import com.mphasis.taskpulse.enums.Decision;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/** One manager decision (approve or reject) as a plain row. Built inside a transaction. */
+/** One manager decision (approve or rework) as a plain row. Built inside a transaction. */
 public record ReviewRow(
         String reviewedOn,
         String project,
@@ -28,8 +28,13 @@ public record ReviewRow(
                 task.getWeekNumber(),
                 task.getTitle(),
                 task.getAssignedTo().getName(),
-                decision.name(),
+                label(decision),
                 managerName,
                 comment == null ? "" : comment);
+    }
+
+    // The word shown in the sheet. The internal value REJECTED is kept in the database.
+    private static String label(Decision decision) {
+        return decision == Decision.REJECTED ? "REWORK" : decision.name();
     }
 }
