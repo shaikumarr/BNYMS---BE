@@ -15,6 +15,10 @@ public class WeeklyTask {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    // the day the task was created/assigned (null for tasks created before this column existed)
+    @Column(name = "start_date")
+    private LocalDate startDate;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "project_id")
@@ -46,6 +50,9 @@ public class WeeklyTask {
     // Latest manager comment, for quick display (full history is in approvals)
     @Column(name = "review_comment", length = 500)
     private String reviewComment;
+    
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DailyUpdate> dailyUpdates = new ArrayList<>();

@@ -20,6 +20,10 @@ public interface WeeklyTaskRepository extends JpaRepository<WeeklyTask, Long> {
     List<WeeklyTask> findByProjectIdOrderByWeekNumberAsc(Long projectId);
 
     List<WeeklyTask> findByAssignedToIdOrderByDeadlineAsc(Long userId);
+    
+    // highest task number used in a project so far (0 when the project has no tasks)
+    @Query("select coalesce(max(t.weekNumber), 0) from WeeklyTask t where t.project.id = :projectId")
+    Integer findMaxNumberInProject(@Param("projectId") Long projectId);
 
     // all approved tasks of a manager, for the Excel report
     List<WeeklyTask> findByStatusAndProjectCreatedByIdOrderByProjectIdAscWeekNumberAsc(

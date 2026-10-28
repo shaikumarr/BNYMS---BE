@@ -1,6 +1,7 @@
-// service/TaskService.java  (full file, team-member check added)
+// service/TaskService.java  (full file: optional start date, default = creation date)
 package com.mphasis.taskpulse.service;
 
+import com.mphasis.taskpulse.dto.TaskCreateRequest;
 import com.mphasis.taskpulse.dto.TaskRequest;
 import com.mphasis.taskpulse.dto.TaskResponse;
 import com.mphasis.taskpulse.entity.Project;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @Service
@@ -41,19 +44,48 @@ public class TaskService {
 
     // ===================== MANAGER =====================
 
-    public TaskResponse create(TaskRequest req) {
+    // Assigns a project to one or more employees as ONE assignment with ONE number (T1, T2, T3 ...).
+    // Every selected employee gets their own task row (own status, progress and approval),
+    // but all of them share the same number. The start date is the one you choose; if you leave
+    // it empty, today (the creation date) is used.
+    // All-or-nothing: if one employee fails a check, nobody is assigned.
+    public List<TaskResponse> create(TaskCreateRequest req) {
         User manager = currentUser.get();
         Project project = findManagerProject(req.projectId(), manager);
-        User assignee = findEmployee(req.assignedTo(), manager);
-        requireTeamMember(project, assignee);
         validateDeadline(req.deadline(), project);
 
-        WeeklyTask task = new WeeklyTask();
-        task.setProject(project);
-        task.setStatus(TaskStatus.ASSIGNED);
-        task.setCompletionPercent(0);
-        applyRequest(task, req, assignee);
-        return Mapper.toTaskResponse(taskRepository.save(task));
+        // start date: chosen by the manager, otherwise the creation date (today)
+        LocalDate start = req.startDate() != null ? req.startDate() : LocalDate.now();
+        if (req.startDate() != null) {
+            validateStartDate(req.startDate(), project);
+        }
+        if (req.deadline().isBefore(start)) {
+            throw new BadRequestException("Deadline cannot be before the start date");
+        }
+
+        List<User> assignees = new ArrayList<>();
+        for (Long employeeId : new LinkedHashSet<>(req.assignedToIds())) {   // removes duplicates
+            User assignee = findEmployee(employeeId, manager);
+            requireTeamMember(project, assignee);
+            assignees.add(assignee);
+        }
+
+        int number = taskRepository.findMaxNumberInProject(project.getId()) + 1;   // ONE number for all
+        List<TaskResponse> created = new ArrayList<>();
+        for (User assignee : assignees) {
+            WeeklyTask task = new WeeklyTask();
+            task.setProject(project);
+            task.setStatus(TaskStatus.ASSIGNED);
+            task.setCompletionPercent(0);
+            task.setTitle(req.title());
+            task.setDescription(req.description());
+            task.setAssignedTo(assignee);
+            task.setWeekNumber(number);      // column kept as "week_number"; it now stores the task number
+            task.setStartDate(start);        // chosen start date, or the creation date by default
+            task.setDeadline(req.deadline());
+            created.add(Mapper.toTaskResponse(taskRepository.save(task)));
+        }
+        return created;
     }
 
     public TaskResponse update(Long id, TaskRequest req) {
@@ -73,9 +105,17 @@ public class TaskService {
             requireTeamMember(task.getProject(), assignee);
         }
         validateDeadline(req.deadline(), task.getProject());
-        
 
-        applyRequest(task, req, assignee);
+        // start date is optional when editing: empty = keep the current one
+        if (req.startDate() != null) {
+            validateStartDate(req.startDate(), task.getProject());
+        }
+        LocalDate start = req.startDate() != null ? req.startDate() : task.getStartDate();
+        if (start != null && req.deadline().isBefore(start)) {
+            throw new BadRequestException("Deadline cannot be before the start date");
+        }
+
+        applyRequest(task, req, assignee);           // the task number (T1, T2...) stays the same
         return Mapper.toTaskResponse(task);          // saved automatically at commit
     }
 
@@ -113,7 +153,7 @@ public class TaskService {
         return Mapper.toTaskResponse(findUserTask(id));
     }
 
-    /** User says "I'm done with this week's part": moves it to SUBMITTED for manager review. */
+    /** User says "I'm done with this task": moves it to SUBMITTED for manager review. */
     public TaskResponse submit(Long id) {
         WeeklyTask task = findUserTask(id);
         if (task.getStatus() == TaskStatus.SUBMITTED || task.getStatus() == TaskStatus.APPROVED) {
@@ -164,12 +204,20 @@ public class TaskService {
         }
     }
 
-   
+    private void validateStartDate(LocalDate startDate, Project project) {
+        if (startDate.isBefore(project.getStartDate()) || startDate.isAfter(project.getEndDate())) {
+            throw new BadRequestException("Start date must be within the project dates ("
+                    + project.getStartDate() + " to " + project.getEndDate() + ")");
+        }
+    }
+
     private void applyRequest(WeeklyTask task, TaskRequest req, User assignee) {
         task.setTitle(req.title());
         task.setDescription(req.description());
         task.setAssignedTo(assignee);
-        task.setWeekNumber(req.weekNumber());
+        if (req.startDate() != null) {
+            task.setStartDate(req.startDate());
+        }
         task.setDeadline(req.deadline());
     }
 }

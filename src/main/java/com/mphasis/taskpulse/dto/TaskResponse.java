@@ -9,6 +9,6 @@ public record TaskResponse(
         Long id, Long projectId, String projectName,
         String title, String description,
         Long assignedToId, String assignedToName,
-        Integer weekNumber, LocalDate deadline,
+        Integer weekNumber, LocalDate startDate, LocalDate deadline,
         TaskStatus status, int completionPercent, String reviewComment) {
 }

@@ -42,7 +42,7 @@ public final class Mapper {
                 t.getId(), t.getProject().getId(), t.getProject().getName(),
                 t.getTitle(), t.getDescription(),
                 t.getAssignedTo().getId(), t.getAssignedTo().getName(),
-                t.getWeekNumber(), t.getDeadline(),
+                t.getWeekNumber(), t.getStartDate(), t.getDeadline(),
                 t.getStatus(), t.getCompletionPercent(), t.getReviewComment());
     }
 

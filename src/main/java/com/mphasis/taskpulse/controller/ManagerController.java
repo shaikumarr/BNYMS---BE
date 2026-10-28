@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
+import com.mphasis.taskpulse.dto.TaskCreateRequest;
 @RestController
 @RequestMapping("/api/manager")
 public class ManagerController {
@@ -122,7 +122,7 @@ public class ManagerController {
     // ---------- weekly tasks ----------
     @PostMapping("/tasks")
     @ResponseStatus(HttpStatus.CREATED)
-    public TaskResponse createTask(@Valid @RequestBody TaskRequest req) {
+    public List<TaskResponse> createTask(@Valid @RequestBody TaskCreateRequest req) {
         return taskService.create(req);
     }
 
