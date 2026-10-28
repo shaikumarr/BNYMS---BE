@@ -1,4 +1,3 @@
-// dto/TaskRequest.java
 package com.mphasis.taskpulse.dto;
 
 import jakarta.validation.constraints.Min;
@@ -14,5 +13,6 @@ public record TaskRequest(
         @Size(max = 1000) String description,
         @NotNull Long assignedTo,
         @NotNull @Min(1) Integer weekNumber,
-        @NotNull LocalDate deadline) {
+        @NotNull LocalDate deadline
+) {
 }

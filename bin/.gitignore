@@ -1,5 +1,11 @@
 HELP.md
 target/
+reports/
+bin/
+credentials/
+*service-account*.json
+*google-sheets-key*.json
+
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

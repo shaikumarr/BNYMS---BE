@@ -9,9 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "weekly_tasks",
-        uniqueConstraints = @UniqueConstraint(
-                columnNames = {"project_id", "assigned_to", "week_number"}))
+@Table(name = "weekly_tasks")
 public class WeeklyTask {
 
     @Id

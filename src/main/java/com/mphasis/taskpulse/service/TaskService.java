@@ -47,7 +47,6 @@ public class TaskService {
         User assignee = findEmployee(req.assignedTo(), manager);
         requireTeamMember(project, assignee);
         validateDeadline(req.deadline(), project);
-        ensureWeekIsFree(project.getId(), assignee.getId(), req.weekNumber(), null);
 
         WeeklyTask task = new WeeklyTask();
         task.setProject(project);
@@ -74,7 +73,7 @@ public class TaskService {
             requireTeamMember(task.getProject(), assignee);
         }
         validateDeadline(req.deadline(), task.getProject());
-        ensureWeekIsFree(task.getProject().getId(), assignee.getId(), req.weekNumber(), task.getId());
+        
 
         applyRequest(task, req, assignee);
         return Mapper.toTaskResponse(task);          // saved automatically at commit
@@ -165,15 +164,7 @@ public class TaskService {
         }
     }
 
-    /** One part per person per week: reject if another task already uses this slot. */
-    private void ensureWeekIsFree(Long projectId, Long userId, Integer week, Long ignoreTaskId) {
-        taskRepository.findByProjectIdAndAssignedToIdAndWeekNumber(projectId, userId, week)
-                .filter(t -> !t.getId().equals(ignoreTaskId))
-                .ifPresent(t -> {
-                    throw new BadRequestException("This employee already has a part in week " + week);
-                });
-    }
-
+   
     private void applyRequest(WeeklyTask task, TaskRequest req, User assignee) {
         task.setTitle(req.title());
         task.setDescription(req.description());
