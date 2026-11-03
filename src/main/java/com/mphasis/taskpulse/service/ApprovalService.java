@@ -1,4 +1,4 @@
-// service/ApprovalService.java
+// service/ApprovalService.java  (full file: partial approvals, completed only at 100%)
 package com.mphasis.taskpulse.service;
 
 import com.mphasis.taskpulse.dto.ReviewRequest;
@@ -81,13 +81,22 @@ public class ApprovalService {
         List<ExcelRow> approvedRows = List.of();
 
         if (req.decision() == Decision.APPROVED) {
-            task.setStatus(TaskStatus.APPROVED);
-            task.setCompletionPercent(100);
+            // the part that was submitted (up to the reported %) is now approved
+            int approvedNow = task.getCompletionPercent();
+            task.setApprovedPercent(approvedNow);
 
-            approvedRows = reportService.rowsFor(task, manager.getName(), now);
+            if (approvedNow >= 100) {
+                // everything is approved: the task is COMPLETED
+                task.setStatus(TaskStatus.APPROVED);
 
-            // existing Excel master sheet event: it carries the manager's id
-            eventPublisher.publishEvent(new TaskApprovedEvent(manager.getId()));
+                approvedRows = reportService.rowsFor(task, manager.getName(), now);
+
+                // existing Excel master sheet event: it carries the manager's id
+                eventPublisher.publishEvent(new TaskApprovedEvent(manager.getId()));
+            } else {
+                // only a part is approved: the employee continues with the remaining work
+                task.setStatus(TaskStatus.IN_PROGRESS);
+            }
         } else {
             task.setStatus(TaskStatus.REJECTED);   // shown as REWORK; the employee updates it and submits again
         }

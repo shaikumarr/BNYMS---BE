@@ -1,6 +1,7 @@
 // dto/TaskCreateRequest.java
 package com.mphasis.taskpulse.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,5 +17,6 @@ public record TaskCreateRequest(
         @Size(max = 1000) String description,
         @NotEmpty(message = "Select at least one employee") List<Long> assignedToIds,
         LocalDate startDate,                 // optional: empty = today (the creation date)
-        @NotNull LocalDate deadline) {
+        @NotNull LocalDate deadline,
+        @Min(1) Integer taskNumber) {        // optional: add people to an EXISTING number (T1...); empty = new number
 }

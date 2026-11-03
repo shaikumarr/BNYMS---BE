@@ -34,6 +34,8 @@ public interface WeeklyTaskRepository extends JpaRepository<WeeklyTask, Long> {
 
     // does this employee still have any weekly parts?
     boolean existsByAssignedToId(Long userId);
+    // does this project already have a task with this number (T1, T2...)?
+    boolean existsByProjectIdAndWeekNumber(Long projectId, Integer weekNumber);
 
     // "ownership" lookups: found only if the task belongs to this manager / user
     Optional<WeeklyTask> findByIdAndProjectCreatedById(Long id, Long managerId);

@@ -48,6 +48,12 @@ public class WeeklyTask {
     private Integer completionPercent = 0;
 
     // Latest manager comment, for quick display (full history is in approvals)
+    
+    // the part of the work (0-100) that the manager has already approved
+    @Column(name = "approved_percent", nullable = false, columnDefinition = "integer default 0")
+    private Integer approvedPercent = 0;
+    
+    
     @Column(name = "review_comment", length = 500)
     private String reviewComment;
     
@@ -86,6 +92,9 @@ public class WeeklyTask {
 
     public TaskStatus getStatus() { return status; }
     public void setStatus(TaskStatus status) { this.status = status; }
+    
+    public Integer getApprovedPercent() { return approvedPercent; }
+    public void setApprovedPercent(Integer approvedPercent) { this.approvedPercent = approvedPercent; }
 
     public Integer getCompletionPercent() { return completionPercent; }
     public void setCompletionPercent(Integer completionPercent) { this.completionPercent = completionPercent; }

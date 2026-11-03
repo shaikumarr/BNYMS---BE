@@ -1,4 +1,4 @@
-// service/TaskService.java  (full file: optional start date, default = creation date)
+// service/TaskService.java  (full file: partial approvals, edit people, optional start date, members can look)
 package com.mphasis.taskpulse.service;
 
 import com.mphasis.taskpulse.dto.TaskCreateRequest;
@@ -48,6 +48,7 @@ public class TaskService {
     // Every selected employee gets their own task row (own status, progress and approval),
     // but all of them share the same number. The start date is the one you choose; if you leave
     // it empty, today (the creation date) is used.
+    // If req.taskNumber() is given, the people are ADDED to that existing number instead.
     // All-or-nothing: if one employee fails a check, nobody is assigned.
     public List<TaskResponse> create(TaskCreateRequest req) {
         User manager = currentUser.get();
@@ -67,16 +68,35 @@ public class TaskService {
         for (Long employeeId : new LinkedHashSet<>(req.assignedToIds())) {   // removes duplicates
             User assignee = findEmployee(employeeId, manager);
             requireTeamMember(project, assignee);
+            if (req.taskNumber() != null) {
+                taskRepository.findByProjectIdAndAssignedToIdAndWeekNumber(
+                                project.getId(), assignee.getId(), req.taskNumber())
+                        .ifPresent(t -> {
+                            throw new BadRequestException(assignee.getName()
+                                    + " is already part of T" + req.taskNumber());
+                        });
+            }
             assignees.add(assignee);
         }
 
-        int number = taskRepository.findMaxNumberInProject(project.getId()) + 1;   // ONE number for all
+        int number;
+        if (req.taskNumber() != null) {
+            // adding people to an existing assignment: they join the same number
+            if (!taskRepository.existsByProjectIdAndWeekNumber(project.getId(), req.taskNumber())) {
+                throw new BadRequestException("T" + req.taskNumber() + " does not exist in this project");
+            }
+            number = req.taskNumber();
+        } else {
+            number = taskRepository.findMaxNumberInProject(project.getId()) + 1;   // a new number for all
+        }
+
         List<TaskResponse> created = new ArrayList<>();
         for (User assignee : assignees) {
             WeeklyTask task = new WeeklyTask();
             task.setProject(project);
             task.setStatus(TaskStatus.ASSIGNED);
             task.setCompletionPercent(0);
+            task.setApprovedPercent(0);
             task.setTitle(req.title());
             task.setDescription(req.description());
             task.setAssignedTo(assignee);
@@ -96,7 +116,7 @@ public class TaskService {
             throw new BadRequestException("A task cannot be moved to another project");
         }
         if (task.getStatus() == TaskStatus.APPROVED) {
-            throw new BadRequestException("Approved tasks cannot be edited");
+            throw new BadRequestException("Completed tasks cannot be edited");
         }
         User assignee = findEmployee(req.assignedTo(), manager);
 
@@ -129,7 +149,7 @@ public class TaskService {
         User manager = currentUser.get();
         List<WeeklyTask> tasks;
         if (projectId != null) {
-            findManagerProject(projectId, manager);   // checks ownership
+            findVisibleProject(projectId, manager);   // owner, or a team member who may look
             tasks = taskRepository.findByProjectIdOrderByWeekNumberAsc(projectId);
         } else {
             tasks = taskRepository.findAllForManager(manager.getId());
@@ -153,14 +173,16 @@ public class TaskService {
         return Mapper.toTaskResponse(findUserTask(id));
     }
 
-    /** User says "I'm done with this task": moves it to SUBMITTED for manager review. */
+    /** User says "I'm done with this part": the new work is sent to the manager for approval. */
     public TaskResponse submit(Long id) {
         WeeklyTask task = findUserTask(id);
         if (task.getStatus() == TaskStatus.SUBMITTED || task.getStatus() == TaskStatus.APPROVED) {
-            throw new BadRequestException("This task is already submitted or approved");
+            throw new BadRequestException("This task is already submitted or completed");
         }
-        if (task.getCompletionPercent() <= 0) {
-            throw new BadRequestException("Add at least one progress update before submitting");
+        // something new must be there to submit: more than what is already approved
+        if (task.getCompletionPercent() <= task.getApprovedPercent()) {
+            throw new BadRequestException("Add progress above the already approved "
+                    + task.getApprovedPercent() + "% before submitting");
         }
         task.setStatus(TaskStatus.SUBMITTED);
         return Mapper.toTaskResponse(task);
@@ -171,6 +193,18 @@ public class TaskService {
     private Project findManagerProject(Long projectId, User manager) {
         return projectRepository.findByIdAndCreatedById(projectId, manager.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+    }
+
+    // read access: the owner, or someone who is in the project's team
+    private Project findVisibleProject(Long projectId, User me) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+        boolean owner = project.getCreatedBy().getId().equals(me.getId());
+        boolean member = project.getMembers().stream().anyMatch(m -> m.getId().equals(me.getId()));
+        if (!owner && !member) {
+            throw new ResourceNotFoundException("Project not found");
+        }
+        return project;
     }
 
     private WeeklyTask findManagerTask(Long id, User manager) {

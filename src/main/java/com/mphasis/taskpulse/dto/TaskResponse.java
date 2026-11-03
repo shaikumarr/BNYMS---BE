@@ -10,5 +10,5 @@ public record TaskResponse(
         String title, String description,
         Long assignedToId, String assignedToName,
         Integer weekNumber, LocalDate startDate, LocalDate deadline,
-        TaskStatus status, int completionPercent, String reviewComment) {
+        TaskStatus status, int completionPercent, int approvedPercent, String reviewComment) {
 }

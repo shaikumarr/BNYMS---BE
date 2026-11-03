@@ -52,15 +52,32 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectResponse> listForManager() {
-        return projectRepository.findByCreatedByIdOrderByIdDesc(currentUser.get().getId())
-                .stream().map(Mapper::toProjectResponse).toList();
-    }
 
+        User current = currentUser.get();
+
+        Map<Long, Project> projects = new LinkedHashMap<>();
+
+        projectRepository
+                .findByCreatedByIdOrderByIdDesc(current.getId())
+                .forEach(p -> projects.put(p.getId(), p));
+
+        if (current.getManager() != null) {
+
+            projectRepository
+                    .findByCreatedByIdOrderByIdDesc(
+                            current.getManager().getId())
+                    .forEach(p -> projects.putIfAbsent(p.getId(), p));
+        }
+
+        return projects.values()
+                .stream()
+                .map(Mapper::toProjectResponse)
+                .toList();
+    }
     @Transactional(readOnly = true)
     public ProjectResponse getForManager(Long id) {
         return Mapper.toProjectResponse(findOwned(id));
     }
-
     public ProjectResponse update(Long id, ProjectRequest req) {
         validateDates(req);
         Project project = findOwned(id);
@@ -113,20 +130,78 @@ public class ProjectService {
     /** USER view: projects the user is a team member of, plus any project where they have a weekly part. */
     @Transactional(readOnly = true)
     public List<ProjectResponse> progressForUser() {
+
         Long userId = currentUser.get().getId();
+
+        System.out.println("==================================");
+        System.out.println("USER ID = " + userId);
+
+        List<Project> memberProjects =
+                projectRepository.findByMembersId(userId);
+
+        System.out.println("PROJECTS FOUND = " + memberProjects.size());
+
+        for (Project p : memberProjects) {
+            System.out.println("PROJECT = " + p.getName());
+        }
+
         Map<Long, Project> projects = new LinkedHashMap<>();
-        for (Project p : projectRepository.findByMembersId(userId)) {
+
+        for (Project p : memberProjects) {
             projects.put(p.getId(), p);
         }
+
         for (Project p : taskRepository.findProjectsByAssignee(userId)) {
             projects.putIfAbsent(p.getId(), p);
         }
-        return projects.values().stream().map(Mapper::toProjectResponse).toList();
+
+        return projects.values().stream()
+                .map(Mapper::toProjectResponse)
+                .toList();
+    }
+    
+    @Transactional(readOnly = true)
+    public ProjectResponse getVisibleProject(Long id) {
+
+        User current = currentUser.get();
+
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found"));
+
+        if (project.getCreatedBy().getId().equals(current.getId())) {
+            return Mapper.toProjectResponse(project);
+        }
+
+        if (current.getManager() != null &&
+                project.getCreatedBy().getId().equals(current.getManager().getId())) {
+
+            return Mapper.toProjectResponse(project);
+        }
+
+        throw new ResourceNotFoundException("Project not found");
     }
 
     private Project findOwned(Long id) {
-        return projectRepository.findByIdAndCreatedById(id, currentUser.get().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+
+        User current = currentUser.get();
+
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project not found"));
+
+        // Project owner
+        if (project.getCreatedBy().getId().equals(current.getId())) {
+            return project;
+        }
+
+        // Manager under owner
+        if (current.getManager() != null &&
+            project.getCreatedBy().getId().equals(current.getManager().getId())) {
+            return project;
+        }
+
+        throw new ResourceNotFoundException("Project not found");
     }
 
     private void apply(Project p, ProjectRequest req) {

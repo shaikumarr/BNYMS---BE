@@ -94,6 +94,13 @@ public class ManagerController {
     public ProjectResponse project(@PathVariable Long id) {
         return projectService.getForManager(id);
     }
+    
+    @GetMapping("/projects-visible/{id}")
+    public ProjectResponse visibleProject(
+            @PathVariable Long id) {
+
+        return projectService.getVisibleProject(id);
+    }
 
     @PutMapping("/projects/{id}")
     public ProjectResponse updateProject(@PathVariable Long id,

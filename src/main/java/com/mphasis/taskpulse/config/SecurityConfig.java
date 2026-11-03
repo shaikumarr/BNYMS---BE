@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/health", "/api/auth/**").permitAll()
                 .requestMatchers("/api/manager/**").hasRole("MANAGER")
-                .requestMatchers("/api/user/**").hasRole("USER")
+                .requestMatchers("/api/user/**").hasAnyRole("USER", "MANAGER")   // managers can also complete tasks given to them
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) ->
