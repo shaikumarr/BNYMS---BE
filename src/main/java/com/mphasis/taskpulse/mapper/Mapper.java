@@ -102,7 +102,8 @@ public final class Mapper {
                 d.getNotes(),
                 d.getRawNotes(),
                 d.getHoursSpent(),
-                d.getPercentAdded()
+                d.getPercentAdded(),
+                d.isLocked()
         );
     }
 

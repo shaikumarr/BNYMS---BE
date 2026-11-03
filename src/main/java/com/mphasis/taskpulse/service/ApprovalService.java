@@ -1,4 +1,4 @@
-// service/ApprovalService.java  (full file: partial approvals, completed only at 100%)
+// service/ApprovalService.java  (full file: partial approvals, approved updates are locked)
 package com.mphasis.taskpulse.service;
 
 import com.mphasis.taskpulse.dto.ReviewRequest;
@@ -84,6 +84,10 @@ public class ApprovalService {
             // the part that was submitted (up to the reported %) is now approved
             int approvedNow = task.getCompletionPercent();
             task.setApprovedPercent(approvedNow);
+
+            // the updates up to now are approved: they can no longer be changed,
+            // and they will not show up in a later rework
+            task.getDailyUpdates().forEach(u -> u.setLocked(true));
 
             if (approvedNow >= 100) {
                 // everything is approved: the task is COMPLETED

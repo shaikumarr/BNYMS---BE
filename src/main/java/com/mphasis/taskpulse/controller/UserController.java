@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.mphasis.taskpulse.dto.DailyUpdateEditRequest;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.List;
 
@@ -57,6 +59,13 @@ public class UserController {
     public DailyUpdateResponse addUpdate(@PathVariable Long id,
                                          @Valid @RequestBody DailyUpdateRequest req) {
         return dailyUpdateService.add(id, req);
+    }
+    
+    // rework: change an existing update instead of creating a new one
+    @PutMapping("/updates/{id}")
+    public DailyUpdateResponse editUpdate(@PathVariable Long id,
+                                          @Valid @RequestBody DailyUpdateEditRequest req) {
+        return dailyUpdateService.edit(id, req);
     }
 
     @GetMapping("/tasks/{id}/updates")

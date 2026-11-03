@@ -59,6 +59,12 @@ public class DailyUpdate {
 
     public Double getHoursSpent() { return hoursSpent; }
     public void setHoursSpent(Double hoursSpent) { this.hoursSpent = hoursSpent; }
+    
+    // true once the manager has approved this update: it can no longer be changed
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean locked = false;
+    public boolean isLocked() { return locked; }
+    public void setLocked(boolean locked) { this.locked = locked; }
 
     public Integer getPercentAdded() { return percentAdded; }
     public void setPercentAdded(Integer percentAdded) { this.percentAdded = percentAdded; }

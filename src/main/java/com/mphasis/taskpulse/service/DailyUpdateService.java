@@ -1,6 +1,7 @@
-// service/DailyUpdateService.java  (full file, one line added: setRawNotes)
+// service/DailyUpdateService.java  (full file: employees can change updates during rework)
 package com.mphasis.taskpulse.service;
 
+import com.mphasis.taskpulse.dto.DailyUpdateEditRequest;
 import com.mphasis.taskpulse.dto.DailyUpdateRequest;
 import com.mphasis.taskpulse.dto.DailyUpdateResponse;
 import com.mphasis.taskpulse.entity.DailyUpdate;
@@ -41,7 +42,7 @@ public class DailyUpdateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 
         if (task.getStatus() == TaskStatus.SUBMITTED || task.getStatus() == TaskStatus.APPROVED) {
-            throw new BadRequestException("Task is submitted or approved, so no more updates are allowed");
+            throw new BadRequestException("Task is submitted or completed, so no more updates are allowed");
         }
 
         DailyUpdate update = new DailyUpdate();
@@ -55,9 +56,46 @@ public class DailyUpdateService {
 
         // progress can never go above 100%
         task.setCompletionPercent(Math.min(100, task.getCompletionPercent() + req.percentAdded()));
-        task.setStatus(TaskStatus.IN_PROGRESS);
+
+        // during rework the task stays in REWORK until the employee resubmits it
+        if (task.getStatus() != TaskStatus.REJECTED) {
+            task.setStatus(TaskStatus.IN_PROGRESS);
+        }
 
         return Mapper.toUpdateResponse(updateRepository.save(update));
+    }
+
+    // Rework: change an existing update (text, hours, progress) instead of creating a new one.
+    // Only updates that are not approved yet, and only while the task is not waiting for review.
+    public DailyUpdateResponse edit(Long updateId, DailyUpdateEditRequest req) {
+        User user = currentUser.get();
+        DailyUpdate update = updateRepository.findByIdAndUserId(updateId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Update not found"));
+        WeeklyTask task = update.getTask();
+
+        if (task.getStatus() == TaskStatus.SUBMITTED || task.getStatus() == TaskStatus.APPROVED) {
+            throw new BadRequestException("The task is waiting for review or completed, so updates cannot be changed");
+        }
+        if (update.isLocked()) {
+            throw new BadRequestException("This update is already approved and cannot be changed");
+        }
+
+        // keep the task's total progress in step with the change
+        int oldPercent = update.getPercentAdded() == null ? 0 : update.getPercentAdded();
+        int newCompletion = task.getCompletionPercent() - oldPercent + req.percentAdded();
+        if (newCompletion > 100) {
+            throw new BadRequestException("Progress cannot go above 100%");
+        }
+        if (newCompletion < task.getApprovedPercent()) {
+            throw new BadRequestException("Progress cannot go below the already approved "
+                    + task.getApprovedPercent() + "%");
+        }
+
+        task.setCompletionPercent(newCompletion);
+        update.setNotes(req.notes().trim());
+        update.setHoursSpent(req.hoursSpent());
+        update.setPercentAdded(req.percentAdded());
+        return Mapper.toUpdateResponse(update);
     }
 
     @Transactional(readOnly = true)
