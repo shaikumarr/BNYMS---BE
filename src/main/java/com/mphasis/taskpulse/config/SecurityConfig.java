@@ -39,9 +39,12 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Spring sends every crash (500) through /error. If /error is protected, the
+                // real error is hidden and shows up as 401, which logs the user out.
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/health", "/api/auth/**").permitAll()
                 .requestMatchers("/api/manager/**").hasRole("MANAGER")
-                .requestMatchers("/api/user/**").hasAnyRole("USER", "MANAGER")   // managers can also complete tasks given to them
+                .requestMatchers("/api/user/**").hasRole("USER")
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) ->
